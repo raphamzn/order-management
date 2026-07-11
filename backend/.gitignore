@@ -1,0 +1,17 @@
+# dependencies
+node_modules
+
+# build
+dist
+
+# tests
+coverage
+
+# logs
+*.log
+
+# env
+.env
+
+# prisma generated client (custom output, if any)
+/generated/prisma

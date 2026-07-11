@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  CRIADA
+  PLANEJADA
+  AGENDADA
+  EM_TRANSPORTE
+  ENTREGUE
+}
+
+enum ScheduleStatus {
+  PENDENTE
+  CONFIRMADO
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  document  String?  @unique
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorizedTransportTypes TransportType[] @relation("ClientAuthorizedTransports")
+  orders                   Order[]
+
+  @@map("clients")
+}
+
+model TransportType {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorizedClients Client[] @relation("ClientAuthorizedTransports")
+  orders            Order[]
+
+  @@map("transport_types")
+}
+
+model Item {
+  id        String   @id @default(uuid())
+  sku       String   @unique
+  name      String
+  unit      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@map("items")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  code            String      @unique
+  status          OrderStatus @default(CRIADA)
+  clientId        String
+  transportTypeId String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  client        Client        @relation(fields: [clientId], references: [id])
+  transportType TransportType @relation(fields: [transportTypeId], references: [id])
+  items         OrderItem[]
+  schedule      Schedule?
+
+  @@index([status])
+  @@index([clientId])
+  @@index([transportTypeId])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id       String @id @default(uuid())
+  orderId  String
+  itemId   String
+  quantity Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item  Item  @relation(fields: [itemId], references: [id])
+
+  @@unique([orderId, itemId])
+  @@map("order_items")
+}
+
+model Schedule {
+  id           String         @id @default(uuid())
+  orderId      String         @unique
+  deliveryDate DateTime
+  windowStart  String
+  windowEnd    String
+  status       ScheduleStatus @default(PENDENTE)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("schedules")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  action        String
+  entity        String
+  entityId      String
+  previousState Json?
+  nextState     Json?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
